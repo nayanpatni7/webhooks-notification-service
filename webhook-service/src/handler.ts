@@ -21,13 +21,31 @@ export const webhook = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
         if (!verifySignature(event.body, signature)) return unauthorized("Invalid signature");
         console.log("Signature verified successfully");
 
-        // Transform payload into Transaction objects before processing
-        const transformedData = transformPayload(JSON.parse(event.body));
-        console.log(transformedData)
 
+        // Check & Parse the incoming payload
+        let parsedPayload;
+        if (typeof event.body === "string") {
+            try {
+                parsedPayload = JSON.parse(event.body);
+            } catch (error) {
+                return badRequest("Invalid JSON body");
+            }
+        } else {
+            parsedPayload = event.body;
+        }
+
+
+        // Validate payload structure based on Transaction interface
+        const validationResult = validatePayload(parsedPayload);
+        if (!validationResult.isValid) {
+            return response(422, { code: 422, message: validationResult.message });
+        }
+
+        // Transform payload into Transaction objects before processing
+        const transformedData = transformPayload(parsedPayload);
 
         // Return success response
-        return successResponse("Webhook received & processed successfully!", transformedData);
+        return successResponse("Trigger/event received at webhook & processed successfully!", transformedData);
     } catch (error) {
         console.error("Error processing webhook:", error);
         return serverError("Internal Server Error");
@@ -73,6 +91,29 @@ function verifySignature(payload: string, signature: string): boolean {
     }
 }
 
+// Validate required fields in the payload
+const validatePayload = (payload: any) => {
+    if (!payload.DirectCreditDetails || !Array.isArray(payload.DirectCreditDetails) || payload.DirectCreditDetails.length === 0) {
+        return { isValid: false, message: "Missing or invalid DirectCreditDetails array" };
+    }
+
+    for (const detail of payload.DirectCreditDetails) {
+        // Validate that each detail has the required fields
+        if (!detail.TransactionId || !detail.Amount || !detail.DateTime || !detail.LodgementRef) {
+            return { isValid: false, message: "Missing required fields in DirectCreditDetails item" };
+        }
+
+        // Optionally validating other fields
+        if (!detail.AccountNumber || !detail.AccountName) {
+            return { isValid: false, message: "Missing required fields in DirectCreditDetails item: AccountNumber or AccountName" };
+        }
+    }
+
+    // If validation passes
+    return { isValid: true, message: "" };
+};
+
+
 interface Transaction {
     id: string;
     amount: number;
@@ -90,9 +131,8 @@ interface Transaction {
 
 
 // Transform the raw webhook payload into an array of Transaction objects.
-function transformPayload(payload: string): Transaction[] {
+function transformPayload(parsed): Transaction[] {
     try {
-        const parsed = JSON.parse(payload);
 
         if (!parsed.DirectCreditDetails || !Array.isArray(parsed.DirectCreditDetails)) {
             console.warn("DirectCreditDetails is missing or not an array.");
