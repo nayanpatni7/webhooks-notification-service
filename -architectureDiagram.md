@@ -1,8 +1,22 @@
 
 # Architecture-diagram
 
+# Architecture Diagram link [Revised_architecture]
+https://drive.google.com/file/d/1mezdJDIqNWqGmlPElZxWObJAv0nC7tzf/view?usp=sharing
 
-# Architecture Diagram with Webhook Processing Flow
+
+
+
+
+
+
+
+
+
+<!-- ----------------------------------------------------------------------- -->
+
+
+# Architecture Diagram with Webhook Processing Flow (Old flow)
 
 +------------------------------------------------------------------+
 |                    Serverless Architecture                       |
